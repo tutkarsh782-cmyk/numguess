@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess My Number — Doodle Hunt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    --ink:#232946;
+    --paper:#FFFDF8;
+    --paper-edge:#232946;
+    --teal:#2BB3A3;
+    --coral:#FF5D8F;
+    --gold:#FFB627;
+    --grape:#8C6FFA;
+    --text-dim:#6B7094;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html,body{height:100%;margin:0}
+  body{
+    min-height:100%;
+    display:flex;align-items:center;justify-content:center;
+    padding:32px 16px;
+    font-family:'Kalam',cursive;
+    color:var(--ink);
+    background:
+      linear-gradient(135deg,#EAF2FF 0%,#F4EEFF 50%,#FFF1F7 100%);
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* ---- background doodles ---- */
+  .doodle{position:fixed;opacity:0.55;pointer-events:none;z-index:0}
+  .doodle svg{display:block}
+  .d1{top:6%;left:6%;width:70px;animation:bob 6s ease-in-out infinite}
+  .d2{bottom:8%;left:8%;width:60px}
+  .d3{top:10%;right:7%;width:56px}
+  .d4{bottom:10%;right:9%;width:80px}
+  .d5{top:45%;left:2%;width:40px;display:none}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
+  @media(min-width:640px){ .d5{display:block} }
+
+  .stage{width:100%;max-width:440px;position:relative;z-index:1}
+
+  h1{
+    font-family:'Caveat',cursive;
+    font-weight:700;
+    font-size:clamp(2.1rem,7vw,2.6rem);
+    text-align:center;
+    margin:0 0 2px;
+    color:var(--ink);
+    transform:rotate(-1deg);
+  }
+  .sub{
+    text-align:center;color:var(--text-dim);
+    margin:0 0 18px;font-size:1.05rem;
+  }
+
+  .card{
+    background:var(--paper);
+    border:3px solid var(--ink);
+    border-radius:26px 34px 24px 36px/34px 24px 36px 26px;
+    padding:26px 24px 22px;
+    position:relative;
+    box-shadow:7px 7px 0 rgba(35,41,70,0.14);
+  }
+
+  /* ---- mascot ---- */
+  .mascot-wrap{display:flex;justify-content:center;margin-bottom:6px}
+  .mascot{
+    width:112px;height:100px;position:relative;
+    background:linear-gradient(160deg,#DCEBFF,#EFE4FF);
+    border:3px solid var(--ink);
+    border-radius:46% 54% 61% 39% / 48% 42% 58% 52%;
+    transition:transform .25s ease,background .3s ease;
+    animation:sway 4.5s ease-in-out infinite;
+  }
+  @keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+
+  .brow{position:absolute;width:20px;height:4px;background:var(--ink);border-radius:3px;top:32px;transition:all .25s ease}
+  .brow.l{left:22px;transform:rotate(-8deg)}
+  .brow.r{right:22px;transform:rotate(8deg)}
+
+  .eye{position:absolute;width:14px;height:14px;background:var(--ink);border-radius:50%;top:40px;transition:all .25s ease}
+  .eye.l{left:24px}
+  .eye.r{right:24px}
+  .eye::after{content:"";position:absolute;width:4px;height:4px;background:#fff;border-radius:50%;top:2px;left:2px}
+
+  .mouth{position:absolute;left:50%;top:64px;transform:translateX(-50%);width:22px;height:8px;border-bottom:4px solid var(--ink);border-radius:0 0 14px 14px;transition:all .25s ease}
+
+  /* cold: far away -> worried squint */
+  .mascot[data-state="cold"] .brow.l{transform:rotate(10deg) translateY(2px)}
+  .mascot[data-state="cold"] .brow.r{transform:rotate(-10deg) translateY(2px)}
+  .mascot[data-state="cold"] .eye{height:5px;border-radius:2px;top:44px}
+  .mascot[data-state="cold"] .eye::after{display:none}
+  .mascot[data-state="cold"] .mouth{width:12px;height:12px;border:3px solid var(--ink);border-radius:50%}
+
+  /* warm: getting closer -> curious */
+  .mascot[data-state="warm"] .eye{width:16px;height:16px;top:38px}
+  .mascot[data-state="warm"] .mouth{width:26px;height:14px;border-radius:0 0 20px 20px}
+
+  /* hot: very close -> excited */
+  .mascot[data-state="hot"]{background:linear-gradient(160deg,#FFE7C2,#FFD3E4)}
+  .mascot[data-state="hot"] .eye{width:18px;height:18px;top:36px}
+  .mascot[data-state="hot"] .brow.l{transform:rotate(-14deg) translateY(-3px)}
+  .mascot[data-state="hot"] .brow.r{transform:rotate(14deg) translateY(-3px)}
+  .mascot[data-state="hot"] .mouth{width:30px;height:20px;border-radius:0 0 26px 26px}
+
+  /* win: happy squinty smile */
+  .mascot[data-state="win"]{background:linear-gradient(160deg,#FFE29A,#FFC6DD)}
+  .mascot[data-state="win"] .eye{height:4px;border-radius:0 0 10px 10px;background:transparent;border-bottom:4px solid var(--ink);top:40px}
+  .mascot[data-state="win"] .eye::after{display:none}
+  .mascot[data-state="win"] .brow.l{transform:rotate(-18deg) translateY(-4px)}
+  .mascot[data-state="win"] .brow.r{transform:rotate(18deg) translateY(-4px)}
+  .mascot[data-state="win"] .mouth{width:32px;height:22px;border-radius:0 0 28px 28px;border-bottom:5px solid var(--ink)}
+
+  .sparkle{position:absolute;font-size:1.1rem;opacity:0;transition:opacity .2s ease;color:var(--gold)}
+  .sparkle.s1{top:-6px;left:-10px}
+  .sparkle.s2{top:-10px;right:-8px}
+  .sparkle.s3{bottom:-4px;left:50%;transform:translateX(-50%)}
+  .mascot[data-state="hot"] .sparkle,.mascot[data-state="win"] .sparkle{opacity:1}
+
+  /* ---- feedback ---- */
+  .feedback{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    min-height:44px;margin:8px 0 16px;text-align:center;
+  }
+  .arrow-glyph{
+    font-family:'Caveat',cursive;font-weight:700;font-size:1.7rem;line-height:1;
+  }
+  .arrow-glyph.up{color:var(--teal)}
+  .arrow-glyph.down{color:var(--coral)}
+  .arrow-glyph.hidden{display:none}
+  @keyframes wiggle{0%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}100%{transform:rotate(0)}}
+  .arrow-glyph.wiggle{animation:wiggle .4s ease}
+  #feedbackText{font-size:1.15rem;font-weight:400}
+
+  /* ---- form ---- */
+  form{display:flex;gap:10px;margin-bottom:6px}
+  #guessInput{
+    flex:1;min-width:0;
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.25rem;
+    text-align:center;color:var(--ink);
+    background:#fff;
+    border:2.5px dashed var(--ink);
+    border-radius:14px;
+    padding:11px 8px;
+  }
+  #guessInput::-webkit-outer-spin-button,#guessInput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  #guessInput{-moz-appearance:textfield}
+  #guessInput::placeholder{color:var(--text-dim)}
+  #guessInput:focus-visible{outline:none;border-color:var(--grape);border-style:solid}
+
+  button{
+    font-family:'Caveat',cursive;font-weight:700;font-size:1.25rem;
+    background:var(--gold);color:var(--ink);
+    border:2.5px solid var(--ink);border-radius:14px;
+    padding:0 22px;cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);
+    transition:transform .1s ease,box-shadow .1s ease;
+  }
+  button:hover{filter:brightness(1.03)}
+  button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+  button:focus-visible{outline:2px solid var(--grape);outline-offset:2px}
+
+  #playAgainBtn{display:none;width:100%;margin-top:2px;background:var(--teal);color:#fff;padding:12px 0}
+
+  /* ---- history ---- */
+  .history{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding:4px 2px 6px}
+  .history:empty{margin-top:0}
+  .chip{
+    flex-shrink:0;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:0.85rem;
+    padding:5px 11px;border-radius:50%;border:2px dashed var(--ink);
+    background:#fff;animation:pop .25s ease;
+  }
+  .chip.low{color:var(--teal);border-color:var(--teal)}
+  .chip.high{color:var(--coral);border-color:var(--coral)}
+  .chip.win{color:#B8860B;background:var(--gold);border-style:solid}
+  @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+
+  #confetti-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
+  .confetto{position:absolute;top:-24px;font-size:1.3rem;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(400deg);opacity:.9}}
+
+  @media(prefers-reduced-motion:reduce){
+    .mascot{animation:none}
+    .d1{animation:none}
+    .chip{animation:none}
+    .confetto{animation:none;display:none}
+  }
+</style>
+</head>
+<body>
+
+  <div class="doodle d1"><svg viewBox="0 0 60 60" width="60"><path d="M30 4 C10 4 4 24 8 34 C-2 36 2 52 16 52 C20 58 40 58 44 52 C58 52 60 34 50 30 C56 18 46 4 30 4Z" fill="none" stroke="#8C6FFA" stroke-width="2.5"/></svg></div>
+  <div class="doodle d2"><svg viewBox="0 0 60 30" width="60"><path d="M2 20 Q12 2 22 20 T42 20 T58 12" fill="none" stroke="#2BB3A3" stroke-width="3" stroke-linecap="round"/></svg></div>
+  <div class="doodle d3"><svg viewBox="0 0 40 40" width="40"><path d="M20 2 L24 16 L38 16 L26 25 L30 39 L20 30 L10 39 L14 25 L2 16 L16 16Z" fill="none" stroke="#FF5D8F" stroke-width="2.5"/></svg></div>
+  <div class="doodle d4"><svg viewBox="0 0 70 40" width="70"><path d="M4 30 Q12 6 22 22 Q30 4 36 22 Q46 4 54 22 Q60 12 66 20" fill="none" stroke="#FFB627" stroke-width="3" stroke-linecap="round"/></svg></div>
+  <div class="doodle d5"><svg viewBox="0 0 30 30" width="30"><path d="M15 2 V28 M2 15 H28 M6 6 L24 24 M24 6 L6 24" stroke="#8C6FFA" stroke-width="2" stroke-linecap="round"/></svg></div>
+
+  <div class="stage">
+    <h1>Guess My Number!</h1>
+    <p class="sub">Pick anything from 1 to 100 — I'm hiding one just for you.</p>
+
+    <div class="card">
+      <div class="mascot-wrap">
+        <div class="mascot" id="mascot" data-state="idle">
+          <span class="sparkle s1">✦</span>
+          <span class="sparkle s2">✧</span>
+          <span class="sparkle s3">✦</span>
+          <div class="brow l"></div>
+          <div class="brow r"></div>
+          <div class="eye l"></div>
+          <div class="eye r"></div>
+          <div class="mouth"></div>
+        </div>
+      </div>
+
+      <div class="feedback">
+        <span class="arrow-glyph hidden" id="arrowGlyph"></span>
+        <span id="feedbackText">Go on, take a guess</span>
+      </div>
+
+      <form id="guessForm" autocomplete="off">
+        <input type="number" id="guessInput" min="1" max="100" placeholder="?" required>
+        <button type="submit">Guess</button>
+      </form>
+      <button id="playAgainBtn" type="button">Play again</button>
+
+      <div class="history" id="history"></div>
+    </div>
+  </div>
+
+  <div id="confetti-layer"></div>
+
+<script>
+(function(){
+  var target = Math.floor(Math.random()*100)+1;
+  var count = 0;
+  var won = false;
+
+  var form = document.getElementById('guessForm');
+  var input = document.getElementById('guessInput');
+  var feedbackText = document.getElementById('feedbackText');
+  var arrowGlyph = document.getElementById('arrowGlyph');
+  var history = document.getElementById('history');
+  var mascot = document.getElementById('mascot');
+  var playAgainBtn = document.getElementById('playAgainBtn');
+
+  function setMascot(state){
+    mascot.setAttribute('data-state', state);
+  }
+
+  function addChip(value, kind){
+    var chip = document.createElement('span');
+    chip.className = 'chip ' + kind;
+    chip.textContent = value;
+    chip.style.transform = 'rotate(' + (Math.random()*10-5).toFixed(1) + 'deg)';
+    history.appendChild(chip);
+    history.scrollLeft = history.scrollWidth;
+  }
+
+  function confetti(){
+    var layer = document.getElementById('confetti-layer');
+    var glyphs = ['✦','★','✧','♥','✺','✎'];
+    var colors = ['#FFB627','#2BB3A3','#FF5D8F','#8C6FFA','#232946'];
+    for(var i=0;i<46;i++){
+      var el = document.createElement('span');
+      el.className = 'confetto';
+      el.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+      el.style.left = Math.random()*100 + 'vw';
+      el.style.color = colors[Math.floor(Math.random()*colors.length)];
+      el.style.fontSize = (14 + Math.random()*14) + 'px';
+      el.style.animationDuration = (2 + Math.random()*1.5) + 's';
+      el.style.animationDelay = (Math.random()*0.4) + 's';
+      layer.appendChild(el);
+      (function(node){ setTimeout(function(){ node.remove(); }, 4200); })(el);
+    }
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(won) return;
+    var val = parseInt(input.value, 10);
+    if(isNaN(val) || val < 1 || val > 100){
+      feedbackText.textContent = 'Numbers 1 through 100 only!';
+      arrowGlyph.className = 'arrow-glyph hidden';
+      return;
+    }
+
+    count += 1;
+    var distance = Math.abs(val - target);
+    var temp = 1 - distance/99;
+
+    if(val === target){
+      won = true;
+      setMascot('win');
+      addChip(val, 'win');
+      arrowGlyph.className = 'arrow-glyph hidden';
+      feedbackText.textContent = 'You got it! ' + count + (count===1 ? ' guess.' : ' guesses.');
+      input.disabled = true;
+      form.querySelector('button').disabled = true;
+      playAgainBtn.style.display = 'block';
+      confetti();
+      return;
+    }
+
+    var direction = val < target ? 'up' : 'down';
+    arrowGlyph.textContent = direction === 'up' ? '↑' : '↓';
+    arrowGlyph.className = 'arrow-glyph ' + direction + ' wiggle';
+    void arrowGlyph.offsetWidth;
+    arrowGlyph.classList.add('wiggle');
+
+    if(temp > 0.85){
+      setMascot('hot');
+      feedbackText.textContent = direction === 'up' ? "Ooh so close — a touch higher!" : "Ooh so close — a touch lower!";
+    } else if(temp > 0.5){
+      setMascot('warm');
+      feedbackText.textContent = direction === 'up' ? "Getting warmer — go higher" : "Getting warmer — go lower";
+    } else {
+      setMascot('cold');
+      feedbackText.textContent = direction === 'up' ? "Way too low — try higher" : "Way too high — try lower";
+    }
+
+    addChip(val, direction === 'up' ? 'low' : 'high');
+    input.value = '';
+    input.focus();
+  });
+
+  playAgainBtn.addEventListener('click', function(){
+    target = Math.floor(Math.random()*100)+1;
+    count = 0;
+    won = false;
+    setMascot('idle');
+    feedbackText.textContent = 'Go on, take a guess';
+    arrowGlyph.className = 'arrow-glyph hidden';
+    history.innerHTML = '';
+    input.disabled = false;
+    form.querySelector('button').disabled = false;
+    playAgainBtn.style.display = 'none';
+    input.value = '';
+    input.focus();
+  });
+})();
+</script>
+</body>
+</html>
